@@ -45,4 +45,11 @@ def dar_de_baja(habitacion_id):
 def reactivar(habitacion_id):
     """Reactivación de una habitación dada de baja: pasa activa a True (Solo Empleados)."""
     respuesta, codigo = HabitacionService.cambiar_estado(habitacion_id, activa=True)
-    return jsonify(respuesta), codigo 
+    return jsonify(respuesta), codigo
+
+@habitacion_bp.route("", methods=["GET"])
+@rol_requerido("Empleado")
+def listar_todas_las_habitaciones():
+    from app.models.habitacion import Habitacion
+    habitaciones = Habitacion.query.order_by(Habitacion.numero).all()
+    return jsonify([h.to_dict() for h in habitaciones]), 200

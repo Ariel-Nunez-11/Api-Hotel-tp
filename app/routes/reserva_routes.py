@@ -53,3 +53,21 @@ def cancelar(reserva_id):
     rol = get_jwt().get("rol")
     respuesta, codigo = ReservaService.cancelar_reserva(reserva_id, usuario_id, rol)
     return jsonify(respuesta), codigo
+
+
+@reserva_bp.route("/mis-reservas", methods=["GET"])
+@rol_requerido("Cliente")
+def obtener_mis_reservas():
+    from flask_jwt_extended import get_jwt_identity
+    from app.models.reserva import Reserva
+    usuario_id = int(get_jwt_identity())
+    reservas = Reserva.query.filter_by(usuario_id=usuario_id).order_by(Reserva.fecha).all()
+    return jsonify([r.to_dict() for r in reservas]), 200
+
+
+@reserva_bp.route("/todas", methods=["GET"])
+@rol_requerido("Empleado")
+def obtener_todas_las_reservas():
+    from app.models.reserva import Reserva
+    reservas = Reserva.query.order_by(Reserva.fecha).all()
+    return jsonify([r.to_dict() for r in reservas]), 200    

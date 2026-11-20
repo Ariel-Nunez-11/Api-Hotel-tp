@@ -31,6 +31,11 @@ def create_app(config_overrides=None):
     app.register_blueprint(habitacion_bp)
     app.register_blueprint(reserva_bp)    
 
+    # Ruta raíz para servir el Frontend Web (app/static/index.html)
+    @app.route("/", methods=["GET"])
+    def index():
+        return app.send_static_file("index.html")
+
     @app.route("/health", methods=["GET"])
     def health_check():
         try:
@@ -54,4 +59,4 @@ def create_app(config_overrides=None):
     def metodo_no_permitido(error):
         return jsonify({"error": "Método HTTP no permitido para esta ruta (405)."}), 405
 
-    return app
+    return app 

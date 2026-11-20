@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión Hotelera - Portales Cliente y Empleado</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f0f2f5; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 3px 12px rgba(0,0,0,0.07); }
+        .navbar-brand { font-weight: 700; }
+        .portal-header-emp { background: linear-gradient(135deg, #1e293b, #334155); color: white; border-radius: 10px; }
+        .portal-header-cli { background: linear-gradient(135deg, #0d6efd, #0dcaf0); color: white; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<!-- Barra Superior -->
+<nav class="navbar navbar-dark bg-dark px-4 mb-4">
+    <span class="navbar-brand">🏨 Hotel API - Sistema Integral</span>
+    <div id="user-info" class="d-none text-light d-flex align-items-center gap-3">
+        <span>Usuario: <strong id="nav-username"></strong></span>
+        <span id="nav-rol" class="badge"></span>
+        <button class="btn btn-outline-light btn-sm" onclick="logout()">Cerrar Sesión</button>
+    </div>
+</nav>
+
+<div class="container pb-5">
+    <div id="alert-box" class="alert d-none shadow-sm" role="alert"></div>
+
+    <!-- ==========================================
+         SECCIÓN 1: INGRESO DIFERENCIADO Y REGISTRO
+         ========================================== -->
+    <div id="auth-section" class="row g-4 justify-content-center">
+        <!-- Ingreso Portal Clientes -->
+        <div class="col-md-4">
+            <div class="card p-4 border-top border-primary border-4 h-100">
+                <h5 class="text-primary fw-bold mb-1">🧳 Acceso Clientes</h5>
+                <p class="text-muted small mb-3">Buscá disponibilidad, reservá habitaciones y gestioná tus reservas.</p>
+                <form onsubmit="login(event, 'Cliente')">
+                    <div class="mb-2">
+                        <label class="form-label small">Usuario Cliente</label>
+                        <input type="text" id="login-cli-user" class="form-control" required placeholder="Ej: cliente1">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">Contraseña</label>
+                        <input type="password" id="login-cli-pass" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Ingresar como Cliente</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Ingreso Portal Empleados -->
+        <div class="col-md-4">
+            <div class="card p-4 border-top border-dark border-4 h-100">
+                <h5 class="text-dark fw-bold mb-1">🛠️ Acceso Empleados</h5>
+                <p class="text-muted small mb-3">Administración de habitaciones, precios, estados y reservas del hotel.</p>
+                <form onsubmit="login(event, 'Empleado')">
+                    <div class="mb-2">
+                        <label class="form-label small">Usuario Empleado</label>
+                        <input type="text" id="login-emp-user" class="form-control" required placeholder="Ej: empleado1">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">Contraseña</label>
+                        <input type="password" id="login-emp-pass" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-dark w-100">Ingresar como Empleado</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Registro de Nuevos Usuarios -->
+        <div class="col-md-4">
+            <div class="card p-4 border-top border-success border-4 h-100">
+                <h5 class="text-success fw-bold mb-1">✨ Crear Nueva Cuenta</h5>
+                <p class="text-muted small mb-3">Registrá un nuevo Cliente o Empleado para probar el sistema.</p>
+                <form onsubmit="registro(event)">
+                    <div class="mb-2">
+                        <label class="form-label small">Nombre de Usuario</label>
+                        <input type="text" id="reg-user" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Contraseña</label>
+                        <input type="password" id="reg-pass" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">Rol</label>
+                        <select id="reg-rol" class="form-select">
+                            <option value="Cliente">Cliente</option>
+                            <option value="Empleado">Empleado</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Registrar Usuario</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         SECCIÓN 2: PORTAL EXCLUSIVO DE EMPLEADOS
+         ========================================== -->
+    <div id="empleado-view" class="d-none">
+        <div class="portal-header-emp p-3 mb-4 d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="mb-0">🛠️ Panel de Control - Administración Hotelera (Empleado)</h4>
+                <small class="text-light opacity-75">Gestión de inventario, disponibilidad y padrón general de reservas</small>
+            </div>
+            <button class="btn btn-sm btn-light" onclick="cargarDatosEmpleado()">🔄 Actualizar Tablas</button>
+        </div>
+
+        <!-- Fila 1: ABM de Habitaciones + Inventario Completo -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="card p-3 mb-3">
+                    <h6 class="fw-bold">➕ Dar de Alta Habitación (POST)</h6>
+                    <form onsubmit="crearHabitacion(event)" class="mt-2">
+                        <input type="number" id="hab-numero" class="form-control form-control-sm mb-2" placeholder="N° Habitación (ej: 103)" required>
+                        <input type="number" step="0.01" id="hab-precio" class="form-control form-control-sm mb-2" placeholder="Precio por noche ($)" required>
+                        <button class="btn btn-sm btn-primary w-100">Crear Habitación</button>
+                    </form>
+                </div>
+
+                <div class="card p-3">
+                    <h6 class="fw-bold">💲 Modificar Precio por ID (PUT)</h6>
+                    <div class="input-group input-group-sm mt-2">
+                        <input type="number" id="mod-hab-id" class="form-control" placeholder="ID Hab.">
+                        <input type="number" step="0.01" id="mod-hab-precio" class="form-control" placeholder="Nuevo $">
+                        <button class="btn btn-warning" onclick="modificarPrecio()">Actualizar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de Todas las Habitaciones del Hotel -->
+            <div class="col-md-8">
+                <div class="card p-3 h-100">
+                    <h6 class="fw-bold mb-2">🏢 Inventario Completo de Habitaciones del Hotel</h6>
+                    <div class="table-responsive" style="max-height: 230px;">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>N° Habitación</th>
+                                    <th>Precio / Noche</th>
+                                    <th>Estado Actual</th>
+                                    <th>Acción Rápida</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-inventario-emp"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fila 2: Habitaciones Reservadas vs Disponibles (Empleado) -->
+        <div class="row g-4">
+            <!-- Lista de Habitaciones Reservadas -->
+            <div class="col-md-7">
+                <div class="card p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0 fw-bold">📋 Habitaciones Reservadas (Padrón General)</h5>
+                        <div class="input-group input-group-sm" style="width: 240px;">
+                            <input type="date" id="emp-filtro-fecha" class="form-control">
+                            <button class="btn btn-secondary" onclick="filtrarReservasFechaEmp()">Filtrar</button>
+                            <button class="btn btn-outline-secondary" onclick="cargarReservasEmpleado()">Todas</button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID Reserva</th>
+                                    <th>Habitación ID</th>
+                                    <th>Cliente (Usuario ID)</th>
+                                    <th>Fecha Reservada</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-reservas-emp"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buscador de Habitaciones Disponibles para el Empleado -->
+            <div class="col-md-5">
+                <div class="card p-4 h-100">
+                    <h5 class="fw-bold mb-2">🔍 Consultar Disponibles por Rango</h5>
+                    <form onsubmit="buscarDisponibles(event, 'emp')" class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="small">Desde</label>
+                            <input type="date" id="emp-busq-inicio" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="small">Hasta</label>
+                            <input type="date" id="emp-busq-fin" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-sm btn-primary w-100">Ver Habitaciones Libres</button>
+                        </div>
+                    </form>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light">
+                                <tr><th>ID</th><th>N° Hab</th><th>Precio</th><th>Estado</th></tr>
+                            </thead>
+                            <tbody id="tabla-disponibles-emp">
+                                <tr><td colspan="4" class="text-muted text-center small">Seleccioná fechas para ver libres</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         SECCIÓN 3: PORTAL EXCLUSIVO DE CLIENTES
+         ========================================== -->
+    <div id="cliente-view" class="d-none">
+        <div class="portal-header-cli p-3 mb-4 d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="mb-0">🧳 Portal de Autogestión de Clientes</h4>
+                <small class="text-light">Buscá habitaciones disponibles, confirmá tu estadía y revisá tus reservas</small>
+            </div>
+            <button class="btn btn-sm btn-light" onclick="cargarMisReservas()">🔄 Actualizar Mis Reservas</button>
+        </div>
+
+        <div class="row g-4">
+            <!-- Columna Izquierda: Buscar Disponibilidad y Reservar -->
+            <div class="col-md-7">
+                <div class="card p-4 mb-4">
+                    <h5 class="fw-bold">1. Buscar Habitaciones Disponibles (GET)</h5>
+                    <form onsubmit="buscarDisponibles(event, 'cli')" class="row g-2 align-items-end mt-1">
+                        <div class="col-sm-4">
+                            <label class="form-label small mb-1">Fecha Ingreso</label>
+                            <input type="date" id="cli-busq-inicio" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-sm-4">
+                            <label class="form-label small mb-1">Fecha Salida (inclusive)</label>
+                            <input type="date" id="cli-busq-fin" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-sm-4">
+                            <label class="form-label small mb-1">Precio Máximo ($)</label>
+                            <input type="number" id="cli-busq-precio" class="form-control form-control-sm" placeholder="Sin tope">
+                        </div>
+                        <div class="col-12 mt-2">
+                            <button type="submit" class="btn btn-primary btn-sm w-100">Buscar Habitaciones Libres</button>
+                        </div>
+                    </form>
+
+                    <div class="table-responsive mt-3">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Habitación</th>
+                                    <th>Precio / Noche</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-disponibles-cli">
+                                <tr><td colspan="4" class="text-center text-muted small">Elegí tus fechas para ver habitaciones disponibles</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Confirmar Reserva -->
+                <div class="card p-4 border-start border-success border-4">
+                    <h5 class="fw-bold text-success">2. Confirmar Nueva Reserva (POST)</h5>
+                    <form onsubmit="crearReserva(event)" class="row g-2 mt-1">
+                        <div class="col-sm-4">
+                            <label class="form-label small mb-1">ID Habitación</label>
+                            <input type="number" id="res-hab-id" class="form-control form-control-sm" required placeholder="Ej: 1">
+                        </div>
+                        <div class="col-sm-4">
+                            <label class="form-label small mb-1">Desde</label>
+                            <input type="date" id="res-inicio" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-sm-4">
+                            <label class="form-label small mb-1">Hasta (inclusive)</label>
+                            <input type="date" id="res-fin" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-12 mt-3">
+                            <button type="submit" class="btn btn-success btn-sm w-100">Confirmar Reserva Ahora</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Mis Reservas Confirmadas -->
+            <div class="col-md-5">
+                <div class="card p-4 h-100">
+                    <h5 class="fw-bold mb-1">📅 Mis Reservas Confirmadas</h5>
+                    <p class="text-muted small mb-3">Listado en tiempo real de tus reservas activas en el hotel.</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID Reserva</th>
+                                    <th>Habitación ID</th>
+                                    <th>Fecha</th>
+                                    <th>Cancelar</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-mis-reservas">
+                                <tr><td colspan="4" class="text-center text-muted small">Aún no tenés reservas registradas.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let token = localStorage.getItem('jwt_token') || null;
+    let userRol = localStorage.getItem('user_rol') || null;
+    let username = localStorage.getItem('username') || null;
+
+    // Decodifica el payload del JWT para extraer el claim "rol"
+    function parseJwt(t) {
+        try {
+            return JSON.parse(atob(t.split('.')[1]));
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function mostrarAlerta(mensaje, tipo = 'success') {
+        const box = document.getElementById('alert-box');
+        box.className = `alert alert-${tipo} shadow-sm`;
+        box.textContent = mensaje;
+        box.classList.remove('d-none');
+        setTimeout(() => box.classList.add('d-none'), 5000);
+    }
+
+    function actualizarVista() {
+        const authSec = document.getElementById('auth-section');
+        const empView = document.getElementById('empleado-view');
+        const cliView = document.getElementById('cliente-view');
+        const userInfo = document.getElementById('user-info');
+
+        if (!token || !userRol) {
+            authSec.classList.remove('d-none');
+            empView.classList.add('d-none');
+            cliView.classList.add('d-none');
+            userInfo.classList.add('d-none');
+            return;
+        }
+
+        authSec.classList.add('d-none');
+        userInfo.classList.remove('d-none');
+        document.getElementById('nav-username').textContent = username;
+        const badge = document.getElementById('nav-rol');
+        badge.textContent = userRol;
+        badge.className = userRol === 'Empleado' ? 'badge bg-warning text-dark' : 'badge bg-info text-dark';
+
+        if (userRol === 'Empleado') {
+            empView.classList.remove('d-none');
+            cliView.classList.add('d-none');
+            cargarDatosEmpleado();
+        } else {
+            empView.classList.add('d-none');
+            cliView.classList.remove('d-none');
+            cargarMisReservas();
+        }
+    }
+
+    async function registro(e) {
+        e.preventDefault();
+        const user = document.getElementById('reg-user').value;
+        const rol = document.getElementById('reg-rol').value;
+        const res = await fetch('/auth/registro', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                username: user,
+                password: document.getElementById('reg-pass').value,
+                rol: rol
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            mostrarAlerta(`Cuenta creada para "${user}" con rol ${rol}. Ahora ingresá en la tarjeta de acceso correspondiente.`, 'success');
+            e.target.reset();
+        } else {
+            mostrarAlerta(data.error || 'Error al registrar', 'danger');
+        }
+    }
+
+    async function login(e, rolEsperado) {
+        e.preventDefault();
+        const userInput = rolEsperado === 'Empleado' ? 'login-emp-user' : 'login-cli-user';
+        const passInput = rolEsperado === 'Empleado' ? 'login-emp-pass' : 'login-cli-pass';
+        const uName = document.getElementById(userInput).value;
+        const uPass = document.getElementById(passInput).value;
+
+        const res = await fetch('/auth/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ username: uName, password: uPass })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            return mostrarAlerta(data.error || 'Credenciales inválidas', 'danger');
+        }
+
+        const payload = parseJwt(data.access_token);
+        const rolReal = payload.rol || data.rol;
+
+        if (rolReal !== rolEsperado) {
+            return mostrarAlerta(`Acceso denegado: El usuario "${uName}" tiene rol ${rolReal}. Ingresá por el portal de ${rolReal}s.`, 'warning');
+        }
+
+        token = data.access_token;
+        userRol = rolReal;
+        username = uName;
+        localStorage.setItem('jwt_token', token);
+        localStorage.setItem('user_rol', userRol);
+        localStorage.setItem('username', username);
+
+        e.target.reset();
+        actualizarVista();
+        mostrarAlerta(`Bienvenido al portal de ${userRol}s, ${username}.`, 'success');
+    }
+
+    function logout() {
+        token = null; userRol = null; username = null;
+        localStorage.clear();
+        actualizarVista();
+        mostrarAlerta('Sesión finalizada.', 'info');
+    }
+
+    // ================= FUNCIONES EMPLEADO =================
+    function cargarDatosEmpleado() {
+        cargarInventarioHabitaciones();
+        cargarReservasEmpleado();
+    }
+
+    async function cargarInventarioHabitaciones() {
+        const res = await fetch('/habitaciones', { headers: {'Authorization': `Bearer ${token}`} });
+        if (!res.ok) return;
+        const data = await res.json();
+        const tbody = document.getElementById('tabla-inventario-emp');
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay habitaciones creadas</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.map(h => `
+            <tr>
+                <td><strong>#${h.id}</strong></td>
+                <td>Habitación ${h.numero}</td>
+                <td>$${h.precio.toLocaleString('es-AR')}</td>
+                <td>${h.activa ? '<span class="badge bg-success">Activa</span>' : '<span class="badge bg-secondary">Dada de Baja</span>'}</td>
+                <td>
+                    ${h.activa
+                        ? `<button class="btn btn-xs btn-outline-danger btn-sm py-0" onclick="cambiarEstadoHab(${h.id}, 'baja')">Dar de Baja</button>`
+                        : `<button class="btn btn-xs btn-outline-success btn-sm py-0" onclick="cambiarEstadoHab(${h.id}, 'activar')">Reactivar</button>`
+                    }
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function cargarReservasEmpleado() {
+        const res = await fetch('/reservas/todas', { headers: {'Authorization': `Bearer ${token}`} });
+        if (!res.ok) return;
+        renderTablaReservasEmp(await res.json());
+    }
+
+    async function filtrarReservasFechaEmp() {
+        const fecha = document.getElementById('emp-filtro-fecha').value;
+        if (!fecha) return mostrarAlerta('Elegí una fecha para filtrar', 'warning');
+        const res = await fetch(`/reservas/fecha/${fecha}`, { headers: {'Authorization': `Bearer ${token}`} });
+        if (res.ok) renderTablaReservasEmp(await res.json());
+    }
+
+    function renderTablaReservasEmp(lista) {
+        const tbody = document.getElementById('tabla-reservas-emp');
+        if (lista.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay habitaciones reservadas</td></tr>';
+            return;
+        }
+        tbody.innerHTML = lista.map(r => `
+            <tr>
+                <td><strong>ID ${r.id}</strong></td>
+                <td>Habitación ID ${r.habitacion_id}</td>
+                <td>Usuario ID ${r.usuario_id}</td>
+                <td><span class="badge bg-dark">${r.fecha}</span></td>
+                <td><button class="btn btn-danger btn-sm py-0" onclick="cancelarReservaPorId(${r.id})">Cancelar</button></td>
+            </tr>
+        `).join('');
+    }
+
+    async function crearHabitacion(e) {
+        e.preventDefault();
+        const res = await fetch('/habitaciones', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
+            body: JSON.stringify({
+                numero: parseInt(document.getElementById('hab-numero').value),
+                precio: parseFloat(document.getElementById('hab-precio').value)
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            mostrarAlerta(`Habitación N° ${data.numero} creada (ID ${data.id})`, 'success');
+            e.target.reset();
+            cargarInventarioHabitaciones();
+        } else {
+            mostrarAlerta(data.error || 'Error al crear habitación', 'danger');
+        }
+    }
+
+    async function modificarPrecio() {
+        const id = document.getElementById('mod-hab-id').value;
+        const precio = document.getElementById('mod-hab-precio').value;
+        if (!id || !precio) return mostrarAlerta('Completá ID y nuevo precio', 'warning');
+        const res = await fetch(`/habitaciones/${id}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
+            body: JSON.stringify({ precio: parseFloat(precio) })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            mostrarAlerta(`Precio actualizado a $${data.precio}`, 'success');
+            cargarInventarioHabitaciones();
+        } else {
+            mostrarAlerta(data.error || 'Error al actualizar', 'danger');
+        }
+    }
+
+    async function cambiarEstadoHab(id, accion) {
+        const url = accion === 'baja' ? `/habitaciones/${id}` : `/habitaciones/${id}/activar`;
+        const method = accion === 'baja' ? 'DELETE' : 'PUT';
+        const res = await fetch(url, { method, headers: {'Authorization': `Bearer ${token}`} });
+        const data = await res.json();
+        if (res.ok) {
+            mostrarAlerta(data.mensaje, 'success');
+            cargarInventarioHabitaciones();
+        } else {
+            mostrarAlerta(data.error || 'Error al cambiar estado', 'danger');
+        }
+    }
+
+    // ================= FUNCIONES COMPARTIDAS Y CLIENTE =================
+    async function buscarDisponibles(e, origen) {
+        e.preventDefault();
+        const inicio = document.getElementById(`${origen}-busq-inicio`).value;
+        const fin = document.getElementById(`${origen}-busq-fin`).value || inicio;
+        const precioInput = document.getElementById(`${origen}-busq-precio`);
+        const precio = precioInput ? precioInput.value : '';
+
+        let url = `/habitaciones/disponibles?fecha_inicio=${inicio}&fecha_fin=${fin}`;
+        if (precio) url += `&precio_max=${precio}`;
+
+        const res = await fetch(url, { headers: {'Authorization': `Bearer ${token}`} });
+        const data = await res.json();
+        const tbody = document.getElementById(`tabla-disponibles-${origen}`);
+
+        if (!res.ok) return mostrarAlerta(data.error || 'Error en búsqueda', 'danger');
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Sin habitaciones disponibles en esas fechas</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.map(h => `
+            <tr>
+                <td><strong>#${h.id}</strong></td>
+                <td>Habitación ${h.numero}</td>
+                <td>$${h.precio.toLocaleString('es-AR')}</td>
+                <td>
+                    ${origen === 'cli'
+                        ? `<button class="btn btn-sm btn-outline-primary py-0" onclick="seleccionarParaReserva(${h.id}, '${inicio}', '${fin}')">Elegir para reservar</button>`
+                        : `<span class="badge bg-success">Libre</span>`
+                    }
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function seleccionarParaReserva(habId, inicio, fin) {
+        document.getElementById('res-hab-id').value = habId;
+        document.getElementById('res-inicio').value = inicio;
+        document.getElementById('res-fin').value = fin;
+        mostrarAlerta(`Habitación #${habId} seleccionada para reservar del ${inicio} al ${fin}. Tocá "Confirmar Reserva Ahora".`, 'info');
+    }
+
+    async function crearReserva(e) {
+        e.preventDefault();
+        const res = await fetch('/reservas', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
+            body: JSON.stringify({
+                habitacion_id: parseInt(document.getElementById('res-hab-id').value),
+                fecha_inicio: document.getElementById('res-inicio').value,
+                fecha_fin: document.getElementById('res-fin').value
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            mostrarAlerta(`¡Reserva confirmada con éxito! (${data.reservas.length} noche/s registrada/s)`, 'success');
+            e.target.reset();
+            cargarMisReservas();
+        } else {
+            mostrarAlerta(data.error || 'No se pudo reservar', 'danger');
+        }
+    }
+
+    async function cargarMisReservas() {
+        const res = await fetch('/reservas/mis-reservas', { headers: {'Authorization': `Bearer ${token}`} });
+        if (!res.ok) return;
+        const lista = await res.json();
+        const tbody = document.getElementById('tabla-mis-reservas');
+        if (lista.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted small">No tenés reservas activas en este momento.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = lista.map(r => `
+            <tr>
+                <td><strong>#${r.id}</strong></td>
+                <td>Habitación ID ${r.habitacion_id}</td>
+                <td><span class="badge bg-primary">${r.fecha}</span></td>
+                <td><button class="btn btn-outline-danger btn-sm py-0" onclick="cancelarReservaPorId(${r.id})">Cancelar</button></td>
+            </tr>
+        `).join('');
+    }
+
+    async function cancelarReservaPorId(id) {
+        const res = await fetch(`/reservas/${id}`, {
+            method: 'DELETE',
+            headers: {'Authorization': `Bearer ${token}`}
+        });
+        const data = await res.json();
+        if (res.ok) {
+            mostrarAlerta(`Reserva #${id} cancelada correctamente.`, 'success');
+            if (userRol === 'Empleado') cargarReservasEmpleado();
+            else cargarMisReservas();
+        } else {
+            mostrarAlerta(data.error || 'Error al cancelar', 'danger');
+        }
+    }
+
+    actualizarVista();
+</script>
+</body>
+</html>
