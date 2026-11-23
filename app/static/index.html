@@ -15,7 +15,6 @@
 </head>
 <body>
 
-<!-- Barra Superior -->
 <nav class="navbar navbar-dark bg-dark px-4 mb-4">
     <span class="navbar-brand">🏨 Hotel API - Sistema Integral</span>
     <div id="user-info" class="d-none text-light d-flex align-items-center gap-3">
@@ -28,11 +27,8 @@
 <div class="container pb-5">
     <div id="alert-box" class="alert d-none shadow-sm" role="alert"></div>
 
-    <!-- ==========================================
-         SECCIÓN 1: INGRESO DIFERENCIADO Y REGISTRO
-         ========================================== -->
+    <!-- SECCIÓN 1: INGRESO DIFERENCIADO Y REGISTRO -->
     <div id="auth-section" class="row g-4 justify-content-center">
-        <!-- Ingreso Portal Clientes -->
         <div class="col-md-4">
             <div class="card p-4 border-top border-primary border-4 h-100">
                 <h5 class="text-primary fw-bold mb-1">🧳 Acceso Clientes</h5>
@@ -51,7 +47,6 @@
             </div>
         </div>
 
-        <!-- Ingreso Portal Empleados -->
         <div class="col-md-4">
             <div class="card p-4 border-top border-dark border-4 h-100">
                 <h5 class="text-dark fw-bold mb-1">🛠️ Acceso Empleados</h5>
@@ -70,7 +65,6 @@
             </div>
         </div>
 
-        <!-- Registro de Nuevos Usuarios -->
         <div class="col-md-4">
             <div class="card p-4 border-top border-success border-4 h-100">
                 <h5 class="text-success fw-bold mb-1">✨ Crear Nueva Cuenta</h5>
@@ -97,9 +91,7 @@
         </div>
     </div>
 
-    <!-- ==========================================
-         SECCIÓN 2: PORTAL EXCLUSIVO DE EMPLEADOS
-         ========================================== -->
+    <!-- SECCIÓN 2: PORTAL EXCLUSIVO DE EMPLEADOS -->
     <div id="empleado-view" class="d-none">
         <div class="portal-header-emp p-3 mb-4 d-flex justify-content-between align-items-center">
             <div>
@@ -109,7 +101,6 @@
             <button class="btn btn-sm btn-light" onclick="cargarDatosEmpleado()">🔄 Actualizar Tablas</button>
         </div>
 
-        <!-- Fila 1: ABM de Habitaciones + Inventario Completo -->
         <div class="row g-4 mb-4">
             <div class="col-md-4">
                 <div class="card p-3 mb-3">
@@ -131,7 +122,6 @@
                 </div>
             </div>
 
-            <!-- Tabla de Todas las Habitaciones del Hotel -->
             <div class="col-md-8">
                 <div class="card p-3 h-100">
                     <h6 class="fw-bold mb-2">🏢 Inventario Completo de Habitaciones del Hotel</h6>
@@ -153,9 +143,7 @@
             </div>
         </div>
 
-        <!-- Fila 2: Habitaciones Reservadas vs Disponibles (Empleado) -->
         <div class="row g-4">
-            <!-- Lista de Habitaciones Reservadas -->
             <div class="col-md-7">
                 <div class="card p-4 h-100">
                     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -183,7 +171,6 @@
                 </div>
             </div>
 
-            <!-- Buscador de Habitaciones Disponibles para el Empleado -->
             <div class="col-md-5">
                 <div class="card p-4 h-100">
                     <h5 class="fw-bold mb-2">🔍 Consultar Disponibles por Rango</h5>
@@ -215,9 +202,7 @@
         </div>
     </div>
 
-    <!-- ==========================================
-         SECCIÓN 3: PORTAL EXCLUSIVO DE CLIENTES
-         ========================================== -->
+    <!-- SECCIÓN 3: PORTAL EXCLUSIVO DE CLIENTES -->
     <div id="cliente-view" class="d-none">
         <div class="portal-header-cli p-3 mb-4 d-flex justify-content-between align-items-center">
             <div>
@@ -228,7 +213,6 @@
         </div>
 
         <div class="row g-4">
-            <!-- Columna Izquierda: Buscar Disponibilidad y Reservar -->
             <div class="col-md-7">
                 <div class="card p-4 mb-4">
                     <h5 class="fw-bold">1. Buscar Habitaciones Disponibles (GET)</h5>
@@ -267,7 +251,6 @@
                     </div>
                 </div>
 
-                <!-- Confirmar Reserva -->
                 <div class="card p-4 border-start border-success border-4">
                     <h5 class="fw-bold text-success">2. Confirmar Nueva Reserva (POST)</h5>
                     <form onsubmit="crearReserva(event)" class="row g-2 mt-1">
@@ -290,7 +273,6 @@
                 </div>
             </div>
 
-            <!-- Columna Derecha: Mis Reservas Confirmadas -->
             <div class="col-md-5">
                 <div class="card p-4 h-100">
                     <h5 class="fw-bold mb-1">📅 Mis Reservas Confirmadas</h5>
@@ -314,21 +296,28 @@
             </div>
         </div>
     </div>
-
 </div>
 
 <script>
     let token = localStorage.getItem('jwt_token') || null;
     let userRol = localStorage.getItem('user_rol') || null;
     let username = localStorage.getItem('username') || null;
+    let cacheReservasEmp = [];
 
-    // Decodifica el payload del JWT para extraer el claim "rol"
     function parseJwt(t) {
-        try {
-            return JSON.parse(atob(t.split('.')[1]));
-        } catch (e) {
-            return {};
+        try { return JSON.parse(atob(t.split('.')[1])); }
+        catch (e) { return {}; }
+    }
+
+    // Extrae el array tanto si la API devuelve [...] directo o {"habitaciones": [...]}
+    function extraerLista(data) {
+        if (Array.isArray(data)) return data;
+        if (data && typeof data === 'object') {
+            for (const key of Object.keys(data)) {
+                if (Array.isArray(data[key])) return data[key];
+            }
         }
+        return [];
     }
 
     function mostrarAlerta(mensaje, tipo = 'success') {
@@ -386,7 +375,7 @@
         });
         const data = await res.json();
         if (res.ok) {
-            mostrarAlerta(`Cuenta creada para "${user}" con rol ${rol}. Ahora ingresá en la tarjeta de acceso correspondiente.`, 'success');
+            mostrarAlerta(data.mensaje || `Cuenta creada para "${user}" con rol ${rol}.`, 'success');
             e.target.reset();
         } else {
             mostrarAlerta(data.error || 'Error al registrar', 'danger');
@@ -406,9 +395,7 @@
             body: JSON.stringify({ username: uName, password: uPass })
         });
         const data = await res.json();
-        if (!res.ok) {
-            return mostrarAlerta(data.error || 'Credenciales inválidas', 'danger');
-        }
+        if (!res.ok) return mostrarAlerta(data.error || 'Credenciales inválidas', 'danger');
 
         const payload = parseJwt(data.access_token);
         const rolReal = payload.rol || data.rol;
@@ -445,22 +432,22 @@
     async function cargarInventarioHabitaciones() {
         const res = await fetch('/habitaciones', { headers: {'Authorization': `Bearer ${token}`} });
         if (!res.ok) return;
-        const data = await res.json();
+        const lista = extraerLista(await res.json());
         const tbody = document.getElementById('tabla-inventario-emp');
-        if (data.length === 0) {
+        if (lista.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay habitaciones creadas</td></tr>';
             return;
         }
-        tbody.innerHTML = data.map(h => `
+        tbody.innerHTML = lista.map(h => `
             <tr>
                 <td><strong>#${h.id}</strong></td>
                 <td>Habitación ${h.numero}</td>
-                <td>$${h.precio.toLocaleString('es-AR')}</td>
+                <td>$${Number(h.precio).toLocaleString('es-AR')}</td>
                 <td>${h.activa ? '<span class="badge bg-success">Activa</span>' : '<span class="badge bg-secondary">Dada de Baja</span>'}</td>
                 <td>
                     ${h.activa
-                        ? `<button class="btn btn-xs btn-outline-danger btn-sm py-0" onclick="cambiarEstadoHab(${h.id}, 'baja')">Dar de Baja</button>`
-                        : `<button class="btn btn-xs btn-outline-success btn-sm py-0" onclick="cambiarEstadoHab(${h.id}, 'activar')">Reactivar</button>`
+                        ? `<button class="btn btn-outline-danger btn-sm py-0" onclick="cambiarEstadoHab(${h.id}, 'baja')">Dar de Baja</button>`
+                        : `<button class="btn btn-outline-success btn-sm py-0" onclick="cambiarEstadoHab(${h.id}, 'reactivar')">Reactivar</button>`
                     }
                 </td>
             </tr>
@@ -468,16 +455,22 @@
     }
 
     async function cargarReservasEmpleado() {
-        const res = await fetch('/reservas/todas', { headers: {'Authorization': `Bearer ${token}`} });
+        const res = await fetch('/reservas', { headers: {'Authorization': `Bearer ${token}`} });
         if (!res.ok) return;
-        renderTablaReservasEmp(await res.json());
+        cacheReservasEmp = extraerLista(await res.json());
+        document.getElementById('emp-filtro-fecha').value = '';
+        renderTablaReservasEmp(cacheReservasEmp);
     }
 
     async function filtrarReservasFechaEmp() {
         const fecha = document.getElementById('emp-filtro-fecha').value;
         if (!fecha) return mostrarAlerta('Elegí una fecha para filtrar', 'warning');
-        const res = await fetch(`/reservas/fecha/${fecha}`, { headers: {'Authorization': `Bearer ${token}`} });
-        if (res.ok) renderTablaReservasEmp(await res.json());
+        if (cacheReservasEmp.length === 0) {
+            const res = await fetch('/reservas', { headers: {'Authorization': `Bearer ${token}`} });
+            if (res.ok) cacheReservasEmp = extraerLista(await res.json());
+        }
+        const filtradas = cacheReservasEmp.filter(r => r.fecha === fecha);
+        renderTablaReservasEmp(filtradas);
     }
 
     function renderTablaReservasEmp(lista) {
@@ -509,7 +502,8 @@
         });
         const data = await res.json();
         if (res.ok) {
-            mostrarAlerta(`Habitación N° ${data.numero} creada (ID ${data.id})`, 'success');
+            const hab = data.habitacion || data;
+            mostrarAlerta(data.mensaje || `Habitación N° ${hab.numero} creada (ID ${hab.id})`, 'success');
             e.target.reset();
             cargarInventarioHabitaciones();
         } else {
@@ -528,7 +522,8 @@
         });
         const data = await res.json();
         if (res.ok) {
-            mostrarAlerta(`Precio actualizado a $${data.precio}`, 'success');
+            const hab = data.habitacion || data;
+            mostrarAlerta(data.mensaje || `Precio actualizado a $${hab.precio}`, 'success');
             cargarInventarioHabitaciones();
         } else {
             mostrarAlerta(data.error || 'Error al actualizar', 'danger');
@@ -536,12 +531,12 @@
     }
 
     async function cambiarEstadoHab(id, accion) {
-        const url = accion === 'baja' ? `/habitaciones/${id}` : `/habitaciones/${id}/activar`;
-        const method = accion === 'baja' ? 'DELETE' : 'PUT';
+        const url = accion === 'baja' ? `/habitaciones/${id}` : `/habitaciones/${id}/reactivar`;
+        const method = accion === 'baja' ? 'DELETE' : 'PATCH';
         const res = await fetch(url, { method, headers: {'Authorization': `Bearer ${token}`} });
         const data = await res.json();
         if (res.ok) {
-            mostrarAlerta(data.mensaje, 'success');
+            mostrarAlerta(data.mensaje || 'Estado de habitación actualizado', 'success');
             cargarInventarioHabitaciones();
         } else {
             mostrarAlerta(data.error || 'Error al cambiar estado', 'danger');
@@ -554,26 +549,30 @@
         const inicio = document.getElementById(`${origen}-busq-inicio`).value;
         const fin = document.getElementById(`${origen}-busq-fin`).value || inicio;
         const precioInput = document.getElementById(`${origen}-busq-precio`);
-        const precio = precioInput ? precioInput.value : '';
+        const precioMax = precioInput && precioInput.value ? parseFloat(precioInput.value) : null;
 
-        let url = `/habitaciones/disponibles?fecha_inicio=${inicio}&fecha_fin=${fin}`;
-        if (precio) url += `&precio_max=${precio}`;
-
+        const url = `/reservas/disponibles?fecha_inicio=${inicio}&fecha_fin=${fin}`;
         const res = await fetch(url, { headers: {'Authorization': `Bearer ${token}`} });
         const data = await res.json();
         const tbody = document.getElementById(`tabla-disponibles-${origen}`);
 
         if (!res.ok) return mostrarAlerta(data.error || 'Error en búsqueda', 'danger');
-        if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Sin habitaciones disponibles en esas fechas</td></tr>';
+
+        let lista = extraerLista(data);
+        if (precioMax !== null && !isNaN(precioMax)) {
+            lista = lista.filter(h => Number(h.precio) <= precioMax);
+        }
+
+        if (lista.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Sin habitaciones disponibles para esos filtros</td></tr>';
             return;
         }
 
-        tbody.innerHTML = data.map(h => `
+        tbody.innerHTML = lista.map(h => `
             <tr>
                 <td><strong>#${h.id}</strong></td>
                 <td>Habitación ${h.numero}</td>
-                <td>$${h.precio.toLocaleString('es-AR')}</td>
+                <td>$${Number(h.precio).toLocaleString('es-AR')}</td>
                 <td>
                     ${origen === 'cli'
                         ? `<button class="btn btn-sm btn-outline-primary py-0" onclick="seleccionarParaReserva(${h.id}, '${inicio}', '${fin}')">Elegir para reservar</button>`
@@ -588,7 +587,7 @@
         document.getElementById('res-hab-id').value = habId;
         document.getElementById('res-inicio').value = inicio;
         document.getElementById('res-fin').value = fin;
-        mostrarAlerta(`Habitación #${habId} seleccionada para reservar del ${inicio} al ${fin}. Tocá "Confirmar Reserva Ahora".`, 'info');
+        mostrarAlerta(`Habitación #${habId} seleccionada del ${inicio} al ${fin}. Tocá "Confirmar Reserva Ahora".`, 'info');
     }
 
     async function crearReserva(e) {
@@ -604,7 +603,7 @@
         });
         const data = await res.json();
         if (res.ok) {
-            mostrarAlerta(`¡Reserva confirmada con éxito! (${data.reservas.length} noche/s registrada/s)`, 'success');
+            mostrarAlerta(data.mensaje || '¡Reserva confirmada con éxito!', 'success');
             e.target.reset();
             cargarMisReservas();
         } else {
@@ -613,9 +612,9 @@
     }
 
     async function cargarMisReservas() {
-        const res = await fetch('/reservas/mis-reservas', { headers: {'Authorization': `Bearer ${token}`} });
+        const res = await fetch('/reservas', { headers: {'Authorization': `Bearer ${token}`} });
         if (!res.ok) return;
-        const lista = await res.json();
+        const lista = extraerLista(await res.json());
         const tbody = document.getElementById('tabla-mis-reservas');
         if (lista.length === 0) {
             tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted small">No tenés reservas activas en este momento.</td></tr>';
@@ -638,7 +637,7 @@
         });
         const data = await res.json();
         if (res.ok) {
-            mostrarAlerta(`Reserva #${id} cancelada correctamente.`, 'success');
+            mostrarAlerta(data.mensaje || `Reserva #${id} cancelada correctamente.`, 'success');
             if (userRol === 'Empleado') cargarReservasEmpleado();
             else cargarMisReservas();
         } else {
